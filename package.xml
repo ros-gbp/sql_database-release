@@ -1,14 +1,14 @@
 <package>
   <name>sql_database</name>
-  <version>0.4.7</version>
+  <version>0.4.8</version>
   <description>
     Provides an easy to use and general interface between a SQL
     database and object-oriented C++ code, making it easy to
     encapsulate the conceptual "objects" contained in the database as
     C++ classes.
   </description>
-  <maintainer email="matei@willowgarage.com">Matei Ciocarlie</maintainer>
-  <author>Lorenz Mosenlechner</author>
+  <maintainer email="matei.ciocarlie@gmail.com">Matei Ciocarlie</maintainer>
+  <author>Matei Ciocarlie and Lorenz Mosenlechner</author>
   <license>BSD</license>
   <url>http://ros.org/wiki/database_interface</url>
 
