@@ -54,6 +54,13 @@ typedef struct pg_conn PGconn;
 
 namespace database_interface {
 
+//this is used to pass the information stored in a received notification event
+struct Notification {
+  std::string channel;
+  int sending_pid;
+  std::string payload;
+};
+  
 class PostgresqlDatabaseConfig
 {
 private:
@@ -78,14 +85,7 @@ public:
 /*!
  *\brief Loads YAML doc into configuration params. Throws YAML::ParserException if keys missing.
  */
-inline void operator>>(const YAML::Node& node, PostgresqlDatabaseConfig &options)
-{
-  node["password"] >> options.password_;
-  node["user"] >> options.user_;
-  node["host"] >> options.host_;
-  node["port"] >> options.port_;
-  node["dbname"] >> options.dbname_;
-}
+void operator>>(const YAML::Node& node, PostgresqlDatabaseConfig &options);
 
 class PostgresqlDatabase
 {
@@ -208,6 +208,18 @@ class PostgresqlDatabase
 
   //! Deletes an instance of a DBClass from the database
   bool deleteFromDatabase(DBClass* instance);
+  
+    //! Enables listening to a specified channel
+  bool listenToChannel(std::string channel);
+
+  //! stop listening to a specified channel
+  bool unlistenToChannel(std::string channel);
+
+  //! Checks for a notification
+  bool checkNotify(Notification &no);
+
+  //! Checks for a notification, but waits until something on the socket happens
+  bool waitForNotify(Notification &no);
 
 };
 
