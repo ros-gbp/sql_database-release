@@ -44,6 +44,23 @@
 
 namespace database_interface {
 
+void operator>>(const YAML::Node& node, PostgresqlDatabaseConfig &options)
+{
+#ifdef HAVE_NEW_YAMLCPP
+  options.password_ = node["password"].as<std::string>();
+  options.user_ = node["user"].as<std::string>();
+  options.host_ = node["host"].as<std::string>();
+  options.port_ = node["port"].as<std::string>();
+  options.dbname_ = node["dbname"].as<std::string>();
+#else
+  node["password"] >> options.password_;
+  node["user"] >> options.user_;
+  node["host"] >> options.host_;
+  node["port"] >> options.port_;
+  node["dbname"] >> options.dbname_;
+#endif
+}
+
 /*! A little helper class to behave much like an auto ptr for the
   PGresult, except that instead of deleting it when it goes out of
   scope, it calls PQclear() on it.
@@ -63,8 +80,13 @@ public:
 void PostgresqlDatabase::pgMDBconstruct(std::string host, std::string port, std::string user,
 						 std::string password, std::string dbname )
 {
-  std::string conn_info = "host=" + host + " port=" + port + 
-    " user=" + user + " password=" + password + " dbname=" + dbname;
+  std::string conn_info;
+  //adding empty strings can cause weird things, as they are not expected to be empty
+  if (!host.empty()) conn_info += "host=" + host;
+  if (!port.empty()) conn_info += " port=" + port;
+  if (!user.empty()) conn_info += " user=" + user;
+  if (!password.empty()) conn_info += " password=" + password;
+  if (!dbname.empty()) conn_info += " dbname=" + dbname;
   connection_= PQconnectdb(conn_info.c_str());
   if (PQstatus(connection_)!=CONNECTION_OK) 
   {
@@ -843,6 +865,93 @@ bool PostgresqlDatabase::deleteFromDatabase(DBClass* instance)
 
   return true;
 
+}
+
+/*! Listens to a specified channel using the Postgresql LISTEN-function.*/
+bool PostgresqlDatabase::listenToChannel(std::string channel) {
+  std::string query = "LISTEN " + channel;
+  PGresultAutoPtr result = PQexec(connection_,query.c_str());
+  if (PQresultStatus(*result) != PGRES_COMMAND_OK)
+      {
+          ROS_WARN("LISTEN command failed: %s", PQerrorMessage(connection_));
+          return false;
+      }
+  ROS_INFO("Now listening to channel \"%s\"",channel.c_str());
+  return true;
+}
+
+/*! Stops listening to a specified channel using the Postgresql UNLISTEN-function. */
+bool PostgresqlDatabase::unlistenToChannel(std::string channel)
+{
+  std::string query = "UNLISTEN " + channel + " ;";
+  PGresultAutoPtr result = PQexec(connection_,query.c_str());
+  if (PQresultStatus(*result) != PGRES_COMMAND_OK)
+  {
+    ROS_WARN("UNLISTEN command failed: %s", PQerrorMessage(connection_));
+    return false;
+  }
+  ROS_INFO("Not listening to channel \"%s\" anymore.",channel.c_str());
+  return true;
+}
+
+/*! Checks for a received NOTIFY and returns it. Returns false if there is a connection problem.
+    If there isn't a notification retreived, the Notification-object will have empty strings and
+    "0" as sending_pid.
+ */
+bool PostgresqlDatabase::checkNotify(Notification &no)
+{
+  PGnotify *notify;
+  //check for a notify on the connection
+  if (!PQconsumeInput(connection_))
+  {
+    ROS_ERROR("Consume input failed with error message: %s", PQerrorMessage(connection_));
+    return false;
+  }
+  //deal with the received object
+  if ((notify = PQnotifies(connection_)) != NULL)
+  {
+    no.channel = notify->relname;
+    no.sending_pid = notify->be_pid;
+    no.payload = notify->extra;
+    PQfreemem(notify);
+  }
+  else
+  {
+    no.channel = "";
+    no.sending_pid = 0;
+    no.payload = "";
+    PQfreemem(notify);
+  }
+  return true;
+}
+
+/*! Checks for a notify and just exits, if there's an error or a received NOTIFY */
+bool PostgresqlDatabase::waitForNotify(Notification &no)
+{
+  int sock;
+  fd_set input_mask;
+  while (true)
+  {
+    // Sleep until something happens on the connection.
+    sock = PQsocket(connection_);     
+    if (sock < 0)
+    {
+      break;
+    }
+    FD_ZERO(&input_mask);
+    FD_SET(sock, &input_mask);
+
+    if (select(sock + 1, &input_mask, NULL, NULL, NULL) < 0)
+    {
+      ROS_WARN("Select() on the database connection failed: %s\n", strerror(errno));
+      break;
+    }
+    // Check for input
+    if (!checkNotify(no)) return false;
+    // Exit if we have a notification
+    if (no.sending_pid != 0) return true;
+  }
+  return false;
 }
 
 }//namespace
