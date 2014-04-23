@@ -1,3 +1,22 @@
+## sql_database (indigo) - 0.4.9-0
+
+The packages in the `sql_database` repository were released into the `indigo` distro by running `/usr/bin/bloom-release sql_database --track indigo --rosdistro indigo` on `Wed, 23 Apr 2014 16:06:39 -0000`
+
+The `sql_database` package was released.
+
+Version of package(s) in repository `sql_database`:
+- rosdistro version: `0.4.8-0`
+- old version: `0.4.8-0`
+- new version: `0.4.9-0`
+
+Versions of tools used:
+- bloom version: `0.5.4`
+- catkin_pkg version: `0.1.25`
+- rosdep version: `0.10.25`
+- rosdistro version: `0.3.4`
+- vcstools version: `0.1.33`
+
+
 ## sql_database (hydro) - 0.4.9-0
 
 The packages in the `sql_database` repository were released into the `hydro` distro by running `/usr/bin/bloom-release sql_database --track hydro --rosdistro hydro` on `Wed, 23 Apr 2014 16:05:09 -0000`
